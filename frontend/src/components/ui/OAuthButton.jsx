@@ -11,7 +11,10 @@ const OAuthButton = ({
 }) => {
   const handleOAuthClick = () => {
     if (provider === 'google') {
-      window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/google`;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      // Remove any trailing /api from the URL since we'll add it explicitly
+      const baseUrl = apiUrl.replace(/\/api$/, '');
+      window.location.href = `${baseUrl}/api/auth/google`;
     } else if (onClick) {
       onClick();
     }
