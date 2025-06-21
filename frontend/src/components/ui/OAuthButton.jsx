@@ -9,6 +9,13 @@ const OAuthButton = ({
   className = '',
   children 
 }) => {
+  const handleOAuthClick = () => {
+    if (provider === 'google') {
+      window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/auth/google`;
+    } else if (onClick) {
+      onClick();
+    }
+  };
   const getProviderStyles = () => {
     switch (provider) {
       case 'google':
@@ -56,7 +63,7 @@ const OAuthButton = ({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleOAuthClick}
       disabled={disabled || isLoading}
       className={`
         w-full flex items-center justify-center px-4 py-3 rounded-lg font-medium text-sm
