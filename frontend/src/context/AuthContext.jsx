@@ -201,12 +201,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const initiateOAuth = (provider) => {
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? process.env.REACT_APP_API_URL || 'https://your-api-domain.com'
-      : 'http://localhost:5001';
+ const initiateOAuth = (provider) => {
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
-    window.location.href = `${baseUrl}/api/auth/${provider}`;
+    // Remove '/api' from baseUrl if it exists since we're adding it below
+    const cleanBaseUrl = baseUrl.replace(/\/api$/, '');
+
+    window.location.href = `${cleanBaseUrl}/api/auth/${provider}`;
   };
 
   const value = {
