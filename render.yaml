@@ -4,9 +4,8 @@ services:
   - type: web
     name: finlogy-backend
     env: node
-    build:
-      buildCommand: cd backend && npm install
-      startCommand: cd backend && npm start
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
