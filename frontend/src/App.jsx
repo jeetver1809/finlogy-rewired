@@ -1260,7 +1260,7 @@ function AppContent() {
           </ErrorBoundary>
         );
       case 'security': // [NEW]
-        return <SecurityDashboard />;
+        return <SecurityDashboard onTransactionChange={handleTransactionChange} />;
       case 'profile':
         return <Profile />;
       case 'support':

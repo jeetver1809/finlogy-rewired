@@ -16,7 +16,7 @@ import AuditLogTable from '../components/security/AuditLogTable';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { motion } from 'framer-motion';
 
-const SecurityDashboard = () => {
+const SecurityDashboard = ({ onTransactionChange }) => {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState(null);
     const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' or 'logs'
@@ -61,12 +61,13 @@ const SecurityDashboard = () => {
             setAllAnomalies(prev => prev.filter(a => a._id !== id));
         }
         fetchSecurityData();
+        if (onTransactionChange) onTransactionChange();
     };
 
     const fetchAllAnomalies = async () => {
         try {
             setLoadingAll(true);
-            const response = await api.get('/security/anomalies');
+            const response = await api.get('/security/anomalies?status=PENDING');
             if (response.data.success) {
                 setAllAnomalies(response.data.data);
             }

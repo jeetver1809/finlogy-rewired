@@ -163,7 +163,7 @@ const QuickStatsCards = memo(({
                         cy="75%"
                         startAngle={180}
                         endAngle={0}
-                        innerRadius="70%"
+                        innerRadius="80%"
                         outerRadius="100%"
                         paddingAngle={0}
                         dataKey="value"
@@ -179,7 +179,7 @@ const QuickStatsCards = memo(({
                     </PieChart>
                   </ResponsiveContainer>
                   {/* Score Text */}
-                  <div className="absolute top-[60%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                  <div className="absolute top-[66%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
                     <span className="text-3xl font-extrabold text-gray-900 dark:text-white">
                       {stat.value}
                     </span>
