@@ -23,6 +23,16 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: "5000"
+      - key: RATE_LIMIT_WINDOW_MS
+        value: "900000"
     plan: free
 
   - type: web
