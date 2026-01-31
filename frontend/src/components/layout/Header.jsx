@@ -49,20 +49,28 @@ const Header = ({ onMenuClick }) => {
             <BellIcon className="h-5 w-5" />
           </button>
 
+          {/* Theme toggle */}
+          {/* ... */}
+
           {/* User menu */}
           <Menu as="div" className="relative">
             <Menu.Button className="flex items-center space-x-3 text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-primary-500">
               <AvatarDisplay
+                key={user?.avatar || 'default'}
                 avatar={user?.avatar}
                 name={user?.name}
                 size="sm"
                 className="ring-2 ring-white dark:ring-gray-800"
               />
+              {/* DEBUG DATA */}
+              <span className="text-xs text-red-500 font-mono">
+                {user?.avatar || 'NO_AVATAR'}
+              </span>
               <span className="hidden md:block text-gray-700 dark:text-gray-300">
                 {user?.name}
               </span>
             </Menu.Button>
-            
+
             <Transition
               as={Fragment}
               enter="transition ease-out duration-100"
@@ -78,9 +86,8 @@ const Header = ({ onMenuClick }) => {
                     {({ active }) => (
                       <a
                         href="/profile"
-                        className={`${
-                          active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                        } block px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
+                        className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''
+                          } block px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
                       >
                         Profile
                       </a>
@@ -90,9 +97,8 @@ const Header = ({ onMenuClick }) => {
                     {({ active }) => (
                       <button
                         onClick={logout}
-                        className={`${
-                          active ? 'bg-gray-100 dark:bg-gray-700' : ''
-                        } block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
+                        className={`${active ? 'bg-gray-100 dark:bg-gray-700' : ''
+                          } block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300`}
                       >
                         Sign out
                       </button>

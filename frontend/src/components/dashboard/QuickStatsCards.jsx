@@ -5,15 +5,17 @@ import {
   ArrowTrendingDownIcon,
   BanknotesIcon,
   ChartBarIcon,
-  CalendarIcon
+  CalendarIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { useCurrency } from '../../context/CurrencyContext';
 
-const QuickStatsCards = memo(({ 
+const QuickStatsCards = memo(({
   totalBalance = 0,
   monthlyExpenses = 0,
   monthlyIncome = 0,
-  savingsRate = 0,
+  financialHealthScore = 0,
   isLoading = false,
   previousMonth = {}
 }) => {
@@ -64,15 +66,15 @@ const QuickStatsCards = memo(({
       description: 'Expenses for current month'
     },
     {
-      id: 'savings',
-      title: 'Savings Rate',
-      value: savingsRate,
-      isPercentage: true,
-      icon: ChartBarIcon,
-      color: 'purple',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-      iconColor: 'text-purple-600 dark:text-purple-400',
-      description: 'Percentage of income saved'
+      id: 'health',
+      title: 'Financial Health',
+      value: financialHealthScore,
+      isPercentage: false,
+      icon: ShieldCheckIcon,
+      color: financialHealthScore > 80 ? 'green' : financialHealthScore > 50 ? 'yellow' : 'red',
+      bgColor: financialHealthScore > 80 ? 'bg-green-50 dark:bg-green-900/20' : financialHealthScore > 50 ? 'bg-yellow-50 dark:bg-yellow-900/20' : 'bg-red-50 dark:bg-red-900/20',
+      iconColor: financialHealthScore > 80 ? 'text-green-600 dark:text-green-400' : financialHealthScore > 50 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400',
+      description: 'Overall security score'
     }
   ];
 
@@ -84,17 +86,17 @@ const QuickStatsCards = memo(({
 
   const getChangeColor = (change, isExpense = false) => {
     if (change === 0) return 'text-gray-500 dark:text-gray-400';
-    
+
     // For expenses, negative change (decrease) is good
     if (isExpense) {
-      return change < 0 
-        ? 'text-green-600 dark:text-green-400' 
+      return change < 0
+        ? 'text-green-600 dark:text-green-400'
         : 'text-red-600 dark:text-red-400';
     }
-    
+
     // For income and balance, positive change is good
-    return change > 0 
-      ? 'text-green-600 dark:text-green-400' 
+    return change > 0
+      ? 'text-green-600 dark:text-green-400'
       : 'text-red-600 dark:text-red-400';
   };
 
@@ -125,62 +127,115 @@ const QuickStatsCards = memo(({
       {stats.map((stat) => (
         <div
           key={stat.id}
-          className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 interactive-card transition-base"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-6 interactive-card transition-base relative overflow-hidden"
         >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-              <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
-            </div>
-            
-            {/* Change indicator - only show if there's meaningful change data */}
-            {stat.change !== undefined && stat.change !== 0 && (
-              <div className={`text-sm font-medium ${getChangeColor(stat.change, stat.id === 'expenses')}`}>
-                {formatChangeValue(stat.change)}
+          {/* SPECIAL RENDER FOR HEALTH GAUGE */}
+          {stat.id === 'health' ? (
+            <div className="relative h-full flex flex-col justify-between">
+              {/* Header with Icon - Consistent with other cards */}
+              <div className="flex items-center justify-between z-10">
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+                </div>
+                {/* Status Pill */}
+                <div className={`text-xs font-bold px-2 py-1 rounded-full border ${stat.value > 80 ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400' :
+                    stat.value > 50 ? 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                      'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400'
+                  }`}>
+                  {stat.value > 80 ? 'Excellent' : stat.value > 50 ? 'Good' : 'Action Needed'}
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Value */}
-          <div className="space-y-2">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {stat.isPercentage 
-                ? `${stat.value.toFixed(1)}%`
-                : formatAmount(stat.value, { showSymbol: true, minimumFractionDigits: 0 })
-              }
-            </div>
-            
-            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {stat.title}
-            </div>
-            
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {stat.description}
-            </div>
-          </div>
+              {/* Main Gauge Area */}
+              <div className="flex-1 flex flex-col items-center justify-center relative mt-1">
+                {/* Background Decorator for "Filled" feel */}
+                <div className={`absolute w-full h-16 rounded-full bottom-0 opacity-5 blur-xl ${stat.value > 80 ? 'bg-green-500' :
+                    stat.value > 50 ? 'bg-yellow-500' :
+                      'bg-red-500'
+                  }`}></div>
 
-          {/* Additional info for current month */}
-          {(stat.id === 'income' || stat.id === 'expenses') && (
-            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                <CalendarIcon className="h-3 w-3 mr-1" />
-                <span>
-                  {new Date().toLocaleDateString('en-IN', { 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}
-                </span>
+                <div className="h-28 w-full relative z-10">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[{ value: stat.value }, { value: 100 - stat.value }]}
+                        cx="50%"
+                        cy="75%"
+                        startAngle={180}
+                        endAngle={0}
+                        innerRadius="70%"
+                        outerRadius="100%"
+                        paddingAngle={0}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        <Cell fill={
+                          stat.value > 80 ? '#10B981' :
+                            stat.value > 50 ? '#F59E0B' :
+                              '#EF4444'
+                        } />
+                        <Cell fill="var(--color-bg-subtle, #E5E7EB)" className="dark:fill-gray-700" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Score Text */}
+                  <div className="absolute top-[60%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                    <span className="text-3xl font-extrabold text-gray-900 dark:text-white">
+                      {stat.value}
+                    </span>
+                  </div>
+                </div>
+
+                <h3 className="text-xs uppercase tracking-wide font-semibold text-gray-400 -mt-2">
+                  Health Score
+                </h3>
               </div>
             </div>
-          )}
-
-          {/* Savings rate additional info */}
-          {stat.id === 'savings' && monthlyIncome > 0 && (
-            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                Saved: {formatAmount(monthlyIncome - monthlyExpenses, { showSymbol: true })} this month
+          ) : (
+            // STANDARD CARD LAYOUT (Balance, Income, Expenses)
+            <>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+                </div>
+                {stat.change !== undefined && stat.change !== 0 && (
+                  <div className={`text-sm font-medium ${getChangeColor(stat.change, stat.id === 'expenses')}`}>
+                    {formatChangeValue(stat.change)}
+                  </div>
+                )}
               </div>
-            </div>
+
+              {/* Value */}
+              <div className="space-y-2">
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {formatAmount(stat.value, { showSymbol: true, minimumFractionDigits: 0 })}
+                </div>
+
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {stat.title}
+                </div>
+
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  {stat.description}
+                </div>
+              </div>
+
+              {/* Date Footer */}
+              {(stat.id === 'income' || stat.id === 'expenses') && (
+                <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                    <CalendarIcon className="h-3 w-3 mr-1" />
+                    <span>
+                      {new Date().toLocaleDateString('en-IN', {
+                        month: 'long',
+                        year: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       ))}

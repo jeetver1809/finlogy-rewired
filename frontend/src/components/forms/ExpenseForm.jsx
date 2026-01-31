@@ -85,20 +85,36 @@ const ExpenseForm = ({ isOpen, onClose, onSubmit, expense = null, isLoading = fa
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast.error('Please fix the errors in the form');
       return;
     }
 
     try {
+      // Convert date string "YYYY-MM-DD" to full ISO timestamp
+      // If date is today, use current time; otherwise use start of that day
+      const dateStr = formData.date;
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+
+      let fullDate;
+      if (dateStr === today) {
+        // Today's date - use current timestamp
+        fullDate = now.toISOString();
+      } else {
+        // Different date - use that date at noon to avoid timezone issues
+        fullDate = new Date(dateStr + 'T12:00:00.000Z').toISOString();
+      }
+
       const expenseData = {
         ...formData,
         amount: parseFloat(formData.amount),
+        date: fullDate,
       };
 
       await onSubmit(expenseData);
-      
+
       if (!expense) {
         // Reset form for new expense
         setFormData({
@@ -121,7 +137,7 @@ const ExpenseForm = ({ isOpen, onClose, onSubmit, expense = null, isLoading = fa
       ...prev,
       [name]: value,
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -159,9 +175,8 @@ const ExpenseForm = ({ isOpen, onClose, onSubmit, expense = null, isLoading = fa
               name="title"
               value={formData.title}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.title ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-              }`}
+              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.title ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                }`}
               placeholder="Enter expense title"
               disabled={isLoading}
             />
@@ -181,9 +196,8 @@ const ExpenseForm = ({ isOpen, onClose, onSubmit, expense = null, isLoading = fa
                 onChange={handleChange}
                 step="0.01"
                 min="0"
-                className={`w-full pl-8 pr-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.amount ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className={`w-full pl-8 pr-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.amount ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 placeholder="0.00"
                 disabled={isLoading}
               />
@@ -219,9 +233,8 @@ const ExpenseForm = ({ isOpen, onClose, onSubmit, expense = null, isLoading = fa
               name="date"
               value={formData.date}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.date ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-              }`}
+              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.date ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                }`}
               disabled={isLoading}
             />
             {errors.date && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.date}</p>}

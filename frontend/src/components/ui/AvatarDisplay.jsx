@@ -10,6 +10,11 @@ const AvatarDisplay = ({
 }) => {
   const [imageError, setImageError] = useState(false);
 
+  // Reset error state when avatar changes
+  React.useEffect(() => {
+    setImageError(false);
+  }, [avatar]);
+
   // Size configurations with enhanced circular styling
   const sizeClasses = {
     sm: 'w-8 h-8 rounded-full',
@@ -50,6 +55,7 @@ const AvatarDisplay = ({
 
   // If we have an avatar and no image error, show the avatar
   if (avatar && !imageError) {
+    // console.log('AvatarDisplay rendering image:', avatar);
     return (
       <div className={`${sizeClasses[size]} overflow-hidden flex-shrink-0 ${enhancedStyling[size]} transition-all duration-300 hover:scale-105 hover:shadow-xl ${className}`}>
         <img

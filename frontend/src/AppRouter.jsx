@@ -52,67 +52,75 @@ const AppRouter = () => {
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route 
-          path="/login" 
+        <Route
+          path="/login"
           element={
             <PublicRoute>
               <Login />
             </PublicRoute>
-          } 
+          }
         />
-        <Route 
-          path="/register" 
+        <Route
+          path="/register"
           element={
             <PublicRoute>
               <Register />
             </PublicRoute>
-          } 
+          }
         />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
 
         {/* Protected Routes */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <MainApp />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/expenses" 
+        <Route
+          path="/expenses"
           element={
             <ProtectedRoute>
               <MainApp />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/income" 
+        <Route
+          path="/income"
           element={
             <ProtectedRoute>
               <MainApp />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/budgets" 
+        <Route
+          path="/budgets"
           element={
             <ProtectedRoute>
               <MainApp />
             </ProtectedRoute>
-          } 
+          }
         />
-        <Route 
-          path="/analytics" 
+        <Route
+          path="/analytics"
           element={
             <ProtectedRoute>
               <MainApp />
             </ProtectedRoute>
-          } 
+          }
         />
         <Route
           path="/profile"
+          element={
+            <ProtectedRoute>
+              <MainApp />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/security" // [NEW]
           element={
             <ProtectedRoute>
               <MainApp />
@@ -130,7 +138,7 @@ const AppRouter = () => {
 
         {/* Default redirect */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        
+
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

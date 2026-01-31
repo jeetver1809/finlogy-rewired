@@ -12,6 +12,7 @@
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
 class GeminiService {
   constructor() {
@@ -25,13 +26,28 @@ class GeminiService {
 
     try {
       this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-      // Use Gemini 1.5 Flash for faster responses and better efficiency
-      this.model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      console.log('✅ Gemini AI service initialized successfully');
+      // Use Gemini 2.5 Flash Lite (Current Fast Model 2026)
+      this.model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+
+      // ✅ [SMART CACHE] Initialize in-memory cache for anomalies
+      // Key: "CATEGORY_AMOUNT_BUCKET" -> Value: Result Object
+      this.anomalyCache = new Map();
+
+      // ✅ [GROQ PIONEER] Initialize Groq as Primary
+      if (process.env.GROQ_API_KEY) {
+        this.groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+        console.log('🚀 Groq (Llama-3) initialized as Primary AI');
+      } else {
+        console.warn('⚠️ GROQ_API_KEY missing, strictly using Gemini');
+        this.groq = null;
+      }
+
+      console.log('✅ AI Services initialized successfully (Groq Primary -> Gemini Fallback)');
     } catch (error) {
-      console.error('❌ Failed to initialize Gemini AI:', error);
+      console.error('❌ Failed to initialize AI Services:', error);
       this.genAI = null;
       this.model = null;
+      this.groq = null;
     }
   }
 
@@ -40,6 +56,80 @@ class GeminiService {
    */
   isAvailable() {
     return this.model !== null;
+  }
+
+  /**
+   * 🔄 RETRY LOGIC FOR RELIABILITY
+   * 
+   * Executes a generator function with exponential backoff for reliability
+   * against network drops and model overloading.
+   */
+  async safeGenerateContent(prompt, maxRetries = 3) {
+    // 1️⃣ TRY GROQ (PRIMARY - LLAMA-3-70B)
+    if (this.groq) {
+      try {
+        const completion = await this.groq.chat.completions.create({
+          messages: [{ role: 'user', content: prompt }],
+          model: 'llama-3.1-8b-instant', // ✅ Active & Fast Llama 3.1
+          temperature: 0.1, // Low temp for deterministic results
+          max_tokens: 1024
+        });
+
+        const text = completion.choices[0]?.message?.content || '';
+        if (text) {
+          console.log('⚡ Served via Groq (Llama-3.1-8B-Instant)');
+          // Normalize to Gemini structure to keep callers happy
+          return {
+            response: {
+              text: () => text
+            }
+          };
+        }
+      } catch (groqError) {
+        console.warn('⚠️ Groq unavailable, switching to Gemini Fallback:', groqError.message);
+        // Fall through to Gemini loop
+      }
+    }
+
+    // 2️⃣ GEMINI FALLBACK (ORIGINAL LOGIC)
+    let lastError;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Calculate backoff: 1s, 2s, 4s...
+        if (attempt > 0) {
+          const delay = Math.pow(2, attempt) * 1000;
+          console.log(`⏳ Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        // Add timeout to prevent hanging requests
+        const result = await Promise.race([
+          this.model.generateContent(prompt),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 20000)
+          )
+        ]);
+
+        return result;
+      } catch (error) {
+        lastError = error;
+        const msg = error.message || '';
+
+        // Retry only on specific transient errors
+        const isRetryable =
+          msg.includes('503') || // Service Unavailable / Overloaded
+          msg.includes('fetch failed') || // Network drop
+          msg.includes('TIMEOUT'); // Local timeout
+
+        if (!isRetryable) {
+          throw error; // Fatal error, fail immediately
+        }
+
+        console.warn(`⚠️ Attempt ${attempt + 1} failed: ${msg.split('\n')[0]}`);
+      }
+    }
+    throw lastError;
   }
 
   /**
@@ -53,7 +143,6 @@ class GeminiService {
    */
   async categorizeTransaction(description, amount) {
     if (!this.isAvailable()) {
-      console.warn('Gemini AI not available, using fallback categorization');
       return this.fallbackCategorization(description);
     }
 
@@ -88,25 +177,24 @@ Rules:
 Category:`;
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this.safeGenerateContent(prompt);
       const response = await result.response;
       const category = response.text().trim();
-      
+
       // Validate the response is one of our categories
       const validCategories = [
         'Food & Dining', 'Transportation', 'Entertainment', 'Shopping',
         'Bills & Utilities', 'Healthcare', 'Education', 'Investment',
         'Salary', 'Freelance', 'Business', 'Travel', 'Groceries', 'Other'
       ];
-      
+
       if (validCategories.includes(category)) {
         return category;
       } else {
-        console.warn(`Invalid category returned: ${category}, using fallback`);
         return this.fallbackCategorization(description);
       }
     } catch (error) {
-      console.error('❌ Gemini categorization error:', error);
+      console.error('❌ Gemini categorization failed after retries:', error.message);
       return this.fallbackCategorization(description);
     }
   }
@@ -121,21 +209,17 @@ Category:`;
    */
   async generateFinancialInsights(financialData) {
     if (!this.isAvailable()) {
-      return 'AI insights are currently unavailable. Please check your API configuration.';
+      return this.generateFallbackInsights(financialData);
     }
 
     const { transactions, budgets, period = 'month' } = financialData;
 
     // Check network connectivity first
     try {
-      // Test basic connectivity to Google's servers
-      const testResponse = await fetch('https://www.google.com', {
-        method: 'HEAD',
-        timeout: 5000
-      });
-      console.log('✅ Network connectivity test passed');
+      // Simple keep-alive check (Google or generally internet)
+      await fetch('https://www.google.com', { method: 'HEAD', timeout: 5000 });
     } catch (networkError) {
-      console.error('❌ Network connectivity test failed:', networkError.message);
+      console.error('❌ Network unavailable for insights');
       return this.generateFallbackInsights(financialData);
     }
 
@@ -143,14 +227,14 @@ Category:`;
 Analyze this personal finance data and provide helpful insights:
 
 RECENT TRANSACTIONS (last 10):
-${transactions.slice(0, 10).map(t => 
-  `- ${t.description}: ₹${t.amount} (${t.category || 'Uncategorized'}) on ${new Date(t.date).toLocaleDateString()}`
-).join('\n')}
+${transactions.slice(0, 10).map(t =>
+      `- ${t.description}: ₹${t.amount} (${t.category || 'Uncategorized'}) on ${new Date(t.date).toLocaleDateString()}`
+    ).join('\n')}
 
 CURRENT BUDGETS:
-${budgets.map(b => 
-  `- ${b.category}: ₹${b.amount} budget, ₹${b.spent || 0} spent`
-).join('\n')}
+${budgets.map(b =>
+      `- ${b.category}: ₹${b.amount} budget, ₹${b.spent || 0} spent`
+    ).join('\n')}
 
 ANALYSIS PERIOD: ${period}
 
@@ -169,33 +253,12 @@ Keep the response:
 Response:`;
 
     try {
-      // Add timeout and retry logic
-      const result = await Promise.race([
-        this.model.generateContent(prompt),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('API request timeout')), 15000)
-        )
-      ]);
-
+      const result = await this.safeGenerateContent(prompt);
       const response = await result.response;
-      const insights = response.text().trim();
-
-      console.log('✅ Generated AI insights successfully');
-      return insights;
+      return response.text().trim();
 
     } catch (error) {
-      console.error('❌ Gemini insights error:', error);
-
-      // Provide more specific error information
-      if (error.message.includes('fetch failed')) {
-        console.error('❌ Network connectivity issue detected');
-      } else if (error.message.includes('timeout')) {
-        console.error('❌ API request timeout');
-      } else if (error.message.includes('API key')) {
-        console.error('❌ API key issue');
-      }
-
-      // Return fallback insights based on the data
+      console.error('❌ Gemini insights failed after retries:', error.message);
       return this.generateFallbackInsights(financialData);
     }
   }
@@ -211,7 +274,7 @@ Response:`;
    */
   async chatWithAI(userMessage, context = {}) {
     if (!this.isAvailable()) {
-      return 'I apologize, but the AI assistant is currently unavailable. Please check your configuration.';
+      return 'I apologize, but the AI assistant is currently unavailable. Please check your network connection.';
     }
 
     const { recentTransactions = [], budgets = [], totalBalance = 0 } = context;
@@ -225,9 +288,9 @@ USER'S FINANCIAL CONTEXT:
 - Active Budgets: ${budgets.length} budgets
 
 RECENT ACTIVITY:
-${recentTransactions.slice(0, 5).map(t => 
-  `- ${t.description}: ₹${t.amount} (${t.category || 'Uncategorized'})`
-).join('\n')}
+${recentTransactions.slice(0, 5).map(t =>
+      `- ${t.description}: ₹${t.amount} (${t.category || 'Uncategorized'})`
+    ).join('\n')}
 
 USER ASKS: "${userMessage}"
 
@@ -243,12 +306,12 @@ Guidelines:
 Response:`;
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this.safeGenerateContent(prompt);
       const response = await result.response;
       return response.text().trim();
     } catch (error) {
-      console.error('❌ Gemini chat error:', error);
-      return 'I apologize, but I\'m having trouble processing your request right now. Please try again in a moment. 🤖';
+      console.error('❌ Gemini chat failed after retries:', error.message);
+      return 'I apologize, but I\'m having trouble verifying your request right now. Please try again in various moments. 🤖';
     }
   }
 
@@ -280,9 +343,9 @@ Response:`;
 Analyze these expense patterns for personal finance insights:
 
 EXPENSE BREAKDOWN:
-${Object.entries(categoryTotals).map(([category, amount]) => 
-  `- ${category}: ₹${amount}`
-).join('\n')}
+${Object.entries(categoryTotals).map(([category, amount]) =>
+      `- ${category}: ₹${amount}`
+    ).join('\n')}
 
 TOTAL EXPENSES: ₹${expenses.reduce((sum, e) => sum + e.amount, 0)}
 NUMBER OF TRANSACTIONS: ${expenses.length}
@@ -303,23 +366,23 @@ Focus on:
 Return only valid JSON:`;
 
     try {
-      const result = await this.model.generateContent(prompt);
+      const result = await this.safeGenerateContent(prompt);
       const response = await result.response;
       const jsonText = response.text().trim();
-      
+
       // Try to parse JSON response
       try {
-        return JSON.parse(jsonText);
+        const parsed = JSON.parse(jsonText.replace(/```json/g, '').replace(/```/g, '').trim());
+        return parsed;
       } catch (parseError) {
-        console.warn('Failed to parse JSON response, returning fallback');
         return {
-          patterns: ['Unable to analyze patterns at the moment'],
+          patterns: ['Unable to parse analysis'],
           recommendations: ['Please try again later'],
           anomalies: []
         };
       }
     } catch (error) {
-      console.error('❌ Gemini pattern analysis error:', error);
+      console.error('❌ Gemini pattern analysis failed after retries:', error.message);
       return {
         patterns: ['Analysis temporarily unavailable'],
         recommendations: ['Please check back later'],
@@ -328,14 +391,7 @@ Return only valid JSON:`;
     }
   }
 
-  /**
-   * 💡 FALLBACK INSIGHTS GENERATION
-   *
-   * Generates basic insights when AI is unavailable
-   *
-   * @param {Object} financialData - User's financial data
-   * @returns {string} - Generated fallback insights
-   */
+  // Fallback Insights Generator (Unchanged)
   generateFallbackInsights(financialData) {
     const { transactions = [], budgets = [], period = 'month' } = financialData;
 
@@ -353,7 +409,7 @@ Return only valid JSON:`;
     }, {});
 
     const topCategory = Object.entries(categoryTotals)
-      .sort(([,a], [,b]) => b - a)[0];
+      .sort(([, a], [, b]) => b - a)[0];
 
     // Budget analysis
     const budgetAnalysis = budgets.length > 0
@@ -374,23 +430,15 @@ ${budgetAnalysis} ${topCategory ? `Your highest spending category is ${topCatego
 
 Based on your current financial patterns, focus on tracking your daily expenses to identify spending trends and opportunities for optimization. Setting up budgets for major expense categories will provide better control over your finances. Regular weekly reviews of your transactions will help you stay aligned with your financial goals, and consider automating your savings to build wealth consistently over time.
 
-*Note: AI insights are temporarily unavailable. These are basic analytics based on your data.*
+*Note: AI insights are temporarily unavailable (Network/Service Issue). These are basic analytics based on your data.*
     `.trim();
 
     return insights;
   }
 
-  /**
-   * 🔄 FALLBACK CATEGORIZATION
-   *
-   * Simple rule-based categorization when AI is unavailable
-   *
-   * @param {string} description - Transaction description
-   * @returns {string} - Category name
-   */
   fallbackCategorization(description) {
     const desc = description.toLowerCase();
-    
+
     // Simple keyword-based categorization
     if (desc.includes('food') || desc.includes('restaurant') || desc.includes('cafe') || desc.includes('zomato') || desc.includes('swiggy')) {
       return 'Food & Dining';
@@ -413,9 +461,85 @@ Based on your current financial patterns, focus on tracking your daily expenses 
     if (desc.includes('grocery') || desc.includes('supermarket') || desc.includes('vegetables')) {
       return 'Groceries';
     }
-    
+
     return 'Other';
   }
+
+  /**
+   * 🚨 ANOMALY DETECTION (AI CLASSIFICATION)
+   * 
+   * Analyzes a single transaction for suspicious patterns using context.
+   * STRICTLY for classification and explanation.
+   * Includes Smart Caching to minimize API calls.
+   * 
+   * @param {Object} transaction - The transaction object
+   * @returns {Promise<Object>} - { isAnomaly: boolean, severity, explanation, confidence }
+   */
+  async detectAnomalies(transaction) {
+    if (!this.isAvailable()) return null;
+
+    // 1. GENERATE CACHE KEY
+    // Bucket amount to nearest 100 to group similar transactions
+    // e.g. ₹520 -> 500, ₹580 -> 600
+    const amountBucket = Math.round(transaction.amount / 100) * 100;
+    const cacheKey = `${transaction.category}_${amountBucket}`.toUpperCase();
+
+    // 2. CHECK CACHE
+    if (this.anomalyCache.has(cacheKey)) {
+      console.log(`⚡ Cache Hit for Anomaly Detection: ${cacheKey}`);
+      return this.anomalyCache.get(cacheKey);
+    }
+
+    const prompt = `
+Analyze this transaction for financial irregularities or unusual monitoring patterns.
+Strictly act as a security classifier. Do not make decisions, just flag.
+
+Transaction: "${transaction.description}"
+Amount: ₹${transaction.amount}
+Category: ${transaction.category}
+Date: ${new Date(transaction.date || Date.now()).toLocaleTimeString()}
+
+Check for:
+1. Suspicious context (e.g. large "Miscellaneous", "Unknown")
+2. Unusual high-value items for typical personal finance
+3. Potential signs of embezzlement or irrational spending
+
+Return JSON only:
+{
+  "isAnomaly": boolean,
+  "severity": "LOW" | "MEDIUM" | "HIGH",
+  "explanation": "Brief plain english reason (max 1 sentence)",
+  "confidence": 0-100
+}
+    `;
+
+    try {
+      const result = await this.safeGenerateContent(prompt);
+      const response = await result.response;
+      const text = response.text().trim();
+
+      // Clean up markdown code blocks if present
+      // Robust JSON extraction
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : text;
+      const parsedResult = JSON.parse(jsonStr);
+
+      // 3. UPDATE CACHE (Store result for future similar checks)
+      // Limit cache size to prevent memory leaks (simple LRU-like check)
+      if (this.anomalyCache.size > 1000) {
+        this.anomalyCache.clear(); // Reset if too big
+      }
+      this.anomalyCache.set(cacheKey, parsedResult);
+      console.log(`🧠 AI Analyzed & Cached: ${cacheKey}`);
+
+      return parsedResult;
+
+    } catch (error) {
+      console.error('❌ Gemini anomaly detection failed after retries:', error.message);
+      return null;
+    }
+  }
+
 }
 
 // Export singleton instance

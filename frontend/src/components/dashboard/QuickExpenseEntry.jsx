@@ -27,7 +27,9 @@ const QuickExpenseEntry = ({ onExpenseAdded, commonCategories = [] }) => {
     'healthcare', 'shopping', 'education', 'other'
   ];
 
-  const categories = commonCategories.length > 0 ? commonCategories : defaultCategories;
+  // Show all categories, with common ones prioritized if needed, or just all sorted
+  // For Quick Add, it's better to allow full flexibility
+  const categories = allCategories.map(c => c.key);
 
   // AI auto-categorization when title changes
   useEffect(() => {
@@ -82,7 +84,7 @@ const QuickExpenseEntry = ({ onExpenseAdded, commonCategories = [] }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.title.trim() || !formData.amount || !formData.category) {
       toast.error('Please fill in all fields');
       return;
@@ -96,22 +98,23 @@ const QuickExpenseEntry = ({ onExpenseAdded, commonCategories = [] }) => {
 
     try {
       setIsSubmitting(true);
-      
+
       const expenseData = {
         title: formData.title.trim(),
         amount: amount,
         category: formData.category,
         date: new Date().toISOString(),
-        description: `Quick entry: ${formData.title}`
+        date: new Date().toISOString(),
+        description: '' // Clean description to avoid redundancy
       };
 
       // Call the parent's expense addition handler
       await onExpenseAdded(expenseData);
-      
+
       // Reset form
       setFormData({ title: '', amount: '', category: '' });
       setIsExpanded(false);
-      
+
       toast.success(`Added ${formatAmount(amount, { showSymbol: true })} expense`);
     } catch (error) {
       console.error('Error adding quick expense:', error);
@@ -166,7 +169,7 @@ const QuickExpenseEntry = ({ onExpenseAdded, commonCategories = [] }) => {
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Description
+                Title
               </label>
               <input
                 type="text"

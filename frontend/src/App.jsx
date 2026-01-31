@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MagnifyingGlassIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import Logo from './components/ui/Logo';
+import AvatarDisplay from './components/ui/AvatarDisplay';
+import { securityService } from './services/securityService';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTheme } from './context/ThemeContext';
 import { useAuth } from './context/AuthContext';
@@ -21,6 +23,7 @@ import { filterTransactions, getUniqueCategories } from './utils/filterUtils';
 import Profile from './pages/Profile';
 import Analytics from './pages/Analytics';
 import Dashboard from './pages/Dashboard';
+import SecurityDashboard from './pages/SecurityDashboard'; // [NEW]
 import SupportMe from './pages/SupportMe';
 import ErrorBoundary from './components/ErrorBoundary';
 import BudgetCard from './components/ui/BudgetCard';
@@ -124,9 +127,13 @@ const Navbar = ({ onProfileClick, onMenuClick, onSearchOpen }) => {
               className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               title={`Profile - ${user?.name || 'User'}`}
             >
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white font-medium text-sm shadow-md hover:shadow-lg transition-shadow">
-                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
-              </div>
+              <AvatarDisplay
+                key={user?.avatar || 'default'}
+                avatar={user?.avatar}
+                name={user?.name}
+                size="sm"
+                className="ring-2 ring-white dark:ring-gray-800"
+              />
               <span className="hidden sm:block text-gray-700 dark:text-gray-300 font-medium">{user?.name || 'User'}</span>
             </button>
           </div>
@@ -137,13 +144,14 @@ const Navbar = ({ onProfileClick, onMenuClick, onSearchOpen }) => {
 };
 
 // Sidebar Component
-const Sidebar = ({ currentPage, onPageChange, isOpen, onClose }) => {
+const Sidebar = ({ currentPage, onPageChange, isOpen, onClose, anomalyCount = 0 }) => {
   const pages = [
     { id: 'dashboard', name: 'Dashboard', icon: '📊' },
     { id: 'expenses', name: 'Expenses', icon: '💸' },
     { id: 'income', name: 'Income', icon: '💰' },
     { id: 'budgets', name: 'Budgets', icon: '🎯' },
     { id: 'analytics', name: 'Analytics', icon: '📈' },
+    { id: 'security', name: 'Security', icon: '🛡️', badge: anomalyCount > 0 ? anomalyCount : null }, // [NEW]
     { id: 'profile', name: 'Profile', icon: '👤' },
     { id: 'support', name: 'Support Me', icon: '❤️' },
   ];
@@ -184,14 +192,18 @@ const Sidebar = ({ currentPage, onPageChange, isOpen, onClose }) => {
               <button
                 key={page.id}
                 onClick={() => onPageChange(page.id)}
-                className={`w-full flex items-center px-3 py-2 text-left rounded-md transition-all duration-200 ease-in-out border border-transparent hover-glow-subtle ${
-                  currentPage === page.id
-                    ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium border-blue-200 dark:border-blue-700'
-                    : 'text-gray-700 dark:text-gray-300'
-                }`}
+                className={`w-full flex items-center px-3 py-2 text-left rounded-md transition-all duration-200 ease-in-out border border-transparent hover-glow-subtle ${currentPage === page.id
+                  ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-medium border-blue-200 dark:border-blue-700'
+                  : 'text-gray-700 dark:text-gray-300'
+                  }`}
               >
                 <span className="mr-3">{page.icon}</span>
-                {page.name}
+                <span className="flex-1">{page.name}</span>
+                {page.badge && (
+                  <span className="inline-flex items-center justify-center px-2 py-0.5 ml-2 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full animate-pulse">
+                    {page.badge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -206,7 +218,7 @@ const Sidebar = ({ currentPage, onPageChange, isOpen, onClose }) => {
 
 
 // Expenses Component with full CRUD functionality
-const Expenses = () => {
+const Expenses = ({ onTransactionChange }) => {
   const [expenses, setExpenses] = useState([]);
   const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -218,14 +230,32 @@ const Expenses = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({});
 
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 1
+  });
+
   // Fetch expenses from API
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (pageOverride = null) => {
     try {
       setLoading(true);
-      const response = await expenseService.getExpenses();
+      const query = {
+        page: pageOverride !== null ? pageOverride : pagination.page,
+        limit: pagination.limit
+      };
+
+
+      const response = await expenseService.getExpenses(query);
       const expenseData = response.data || [];
+
       setExpenses(expenseData);
       setFilteredExpenses(expenseData);
+
+      if (response.pagination) {
+        setPagination(prev => ({ ...prev, ...response.pagination }));
+      }
     } catch (error) {
       console.error('Error fetching expenses:', error);
       toast.error('Failed to load expenses');
@@ -235,6 +265,17 @@ const Expenses = () => {
       setLoading(false);
     }
   };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      setPagination(prev => ({ ...prev, page: newPage }));
+    }
+  };
+
+  // Listen for pagination changes
+  useEffect(() => {
+    fetchExpenses();
+  }, [pagination.page]); // Re-fetch when page changes
 
   // Apply search and filters
   const applyFilters = () => {
@@ -267,7 +308,14 @@ const Expenses = () => {
       await expenseService.createExpense(expenseData);
       toast.success('Expense added successfully!');
       setShowExpenseForm(false);
-      fetchExpenses(); // Refresh the list to show the new expense
+
+      // Notify parent IMMEDIATELY after create to trigger anomaly refresh
+      // (before fetchExpenses which can delay the security badge update)
+      if (onTransactionChange) onTransactionChange();
+
+      // Reset to page 1 to see the newly added expense (sorted by date DESC)
+      setPagination(prev => ({ ...prev, page: 1 }));
+      await fetchExpenses(1);
     } catch (error) {
       console.error('Error adding expense:', error);
       toast.error('Failed to add expense');
@@ -282,7 +330,8 @@ const Expenses = () => {
       await expenseService.updateExpense(editingExpense._id, expenseData);
       toast.success('Expense updated successfully!');
       setEditingExpense(null);
-      fetchExpenses(); // Refresh the list to show the updated expense
+      await fetchExpenses();
+      if (onTransactionChange) onTransactionChange();
     } catch (error) {
       console.error('Error updating expense:', error);
       toast.error('Failed to update expense');
@@ -298,7 +347,8 @@ const Expenses = () => {
       toast.success('Expense deleted successfully!');
       setShowDeleteDialog(false);
       setDeletingExpense(null);
-      fetchExpenses(); // Refresh the list to remove the deleted expense
+      await fetchExpenses();
+      if (onTransactionChange) onTransactionChange();
     } catch (error) {
       console.error('Error deleting expense:', error);
       toast.error('Failed to delete expense');
@@ -340,7 +390,7 @@ const Expenses = () => {
         categories={getUniqueCategories(expenses, 'category')}
         placeholder="Search expenses by title, description, or category..."
         resultCount={filteredExpenses.length}
-        totalCount={expenses.length}
+        totalCount={pagination.total}
         isLoading={loading}
         suggestions={expenses.map(expense => expense.title).filter((title, index, array) => array.indexOf(title) === index)}
         onSuggestionSelect={(suggestion) => {
@@ -375,16 +425,16 @@ const Expenses = () => {
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Description</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Transaction</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Category</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Amount</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Date</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 border-t border-gray-200 dark:border-gray-700">
                     {filteredExpenses.map((expense) => (
-                      <tr key={expense._id} className="hover-glow cursor-pointer transition-all duration-200 ease-in-out border border-transparent">
+                      <tr key={expense._id} className="hover-glow cursor-pointer transition-all duration-200 ease-in-out border-b border-gray-200 dark:border-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900 dark:text-white">{expense.title}</div>
@@ -482,6 +532,57 @@ const Expenses = () => {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {expenses.length > 0 && (
+        <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 sm:px-6 rounded-b-lg">
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                Showing page <span className="font-medium">{pagination.page}</span> of <span className="font-medium">{pagination.pages}</span> ({pagination.total} results)
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => handlePageChange(pagination.page - 1)}
+                  disabled={pagination.page === 1}
+                  className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 ${pagination.page === 1 ? 'cursor-not-allowed opacity-50' : ''}`}
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => handlePageChange(pagination.page + 1)}
+                  disabled={pagination.page === pagination.pages}
+                  className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-600 ${pagination.page === pagination.pages ? 'cursor-not-allowed opacity-50' : ''}`}
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          </div>
+          {/* Mobile Pagination View */}
+          <div className="flex items-center justify-between w-full sm:hidden">
+            <button
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={pagination.page === 1}
+              className={`relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 ${pagination.page === 1 ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              p. {pagination.page}/{pagination.pages}
+            </span>
+            <button
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={pagination.page === pagination.pages}
+              className={`relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 ${pagination.page === pagination.pages ? 'cursor-not-allowed opacity-50' : ''}`}
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
 
@@ -696,9 +797,9 @@ const Income = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 border-t border-gray-200 dark:border-gray-700">
                     {filteredIncomeList.map((income) => (
-                      <tr key={income._id} className="hover-glow cursor-pointer transition-all duration-200 ease-in-out border border-transparent">
+                      <tr key={income._id} className="hover-glow cursor-pointer transition-all duration-200 ease-in-out border-b border-gray-200 dark:border-gray-700">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-gray-900 dark:text-white">{income.title}</div>
@@ -1014,21 +1115,32 @@ function AppContent() {
     budgets: [],
     categories: []
   });
+  const [unreadAnomalies, setUnreadAnomalies] = useState(0);
+  const { user } = useAuth();
 
   // Get current page from route
   const getCurrentPage = () => {
     const path = location.pathname;
-    console.log('Current path:', path); // Debug log
     if (path.includes('/expenses')) return 'expenses';
     if (path.includes('/income')) return 'income';
     if (path.includes('/budgets')) return 'budgets';
     if (path.includes('/analytics')) return 'analytics';
     if (path.includes('/profile')) return 'profile';
+    if (path.includes('/security')) return 'security'; // [NEW]
     if (path.includes('/support-me')) return 'support';
     return 'dashboard';
   };
 
   const currentPage = getCurrentPage();
+
+  const loadSearchData = async () => {
+    try {
+      const data = await searchService.getAllSearchData();
+      setSearchData(data);
+    } catch (error) {
+      console.error('Error loading search data:', error);
+    }
+  };
 
   // Global keyboard shortcut for search (Ctrl+K / Cmd+K)
   useEffect(() => {
@@ -1054,32 +1166,33 @@ function AppContent() {
     loadSearchData();
   }, []);
 
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      // Ctrl+K or Cmd+K to open search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-      // Escape to close search
-      if (e.key === 'Escape' && searchOpen) {
-        setSearchOpen(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [searchOpen]);
-
-  const loadSearchData = async () => {
+  // Fetch security stats
+  const fetchSecurityStats = async () => {
     try {
-      const data = await searchService.getAllSearchData();
-      setSearchData(data);
+      if (user) {
+        const response = await securityService.getDashboardStats();
+        if (response.data?.success) {
+          setUnreadAnomalies(response.data.data.stats.pending || 0);
+        }
+      }
     } catch (error) {
-      console.error('Error loading search data:', error);
+      console.error("Failed to fetch security stats", error);
     }
   };
+
+  useEffect(() => {
+    fetchSecurityStats();
+
+    // Optional: Poll every 30s
+    const interval = setInterval(fetchSecurityStats, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  const handleTransactionChange = () => {
+    fetchSecurityStats();
+  };
+
+
 
   const handleProfileClick = () => {
     navigate('/profile');
@@ -1090,7 +1203,6 @@ function AppContent() {
   const handlePageChange = (page) => {
     // Handle special routing cases
     const route = page === 'support' ? '/support-me' : `/${page}`;
-    console.log('Navigation: page =', page, ', route =', route); // Debug log
     navigate(route);
     // Close mobile sidebar if open
     setSidebarOpen(false);
@@ -1134,11 +1246,11 @@ function AppContent() {
     console.log('Rendering page for currentPage:', currentPage); // Debug log
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard onNavigate={handlePageChange} />;
+        return <Dashboard onNavigate={handlePageChange} onTransactionChange={handleTransactionChange} />;
       case 'expenses':
-        return <Expenses />;
+        return <Expenses onTransactionChange={handleTransactionChange} />;
       case 'income':
-        return <Income />;
+        return <Income onTransactionChange={handleTransactionChange} />;
       case 'budgets':
         return <Budgets />;
       case 'analytics':
@@ -1147,6 +1259,8 @@ function AppContent() {
             <Analytics />
           </ErrorBoundary>
         );
+      case 'security': // [NEW]
+        return <SecurityDashboard />;
       case 'profile':
         return <Profile />;
       case 'support':
@@ -1156,8 +1270,6 @@ function AppContent() {
     }
   };
 
-  // Get user from AuthContext
-  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -1191,6 +1303,7 @@ function AppContent() {
           onPageChange={handlePageChange}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          anomalyCount={unreadAnomalies}
         />
         <div className="flex-1 overflow-hidden lg:ml-0"> {/* Ensure proper spacing on desktop */}
           <main className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 custom-scrollbar scroll-smooth">

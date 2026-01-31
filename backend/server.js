@@ -17,7 +17,9 @@ const incomeRoutes = require('./routes/income');
 const budgetRoutes = require('./routes/budgets');
 const analyticsRoutes = require('./routes/analytics');
 const aiRoutes = require('./routes/ai');
+
 const feedbackRoutes = require('./routes/feedback');
+const securityRoutes = require('./routes/security'); // [NEW] Security Routes
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -46,15 +48,13 @@ const corsOptions = {
     ].filter(Boolean); // Remove any undefined values
 
     // Allow all subdomains of localhost in development
-    if (process.env.NODE_ENV === 'development' && 
-        (origin.match(/^https?:\/\/localhost(:[0-9]+)?$/) || 
-         origin.match(/^https?:\/\/127\.0\.0\.1(:[0-9]+)?$/))) {
-      console.log(`✅ CORS: Allowing localhost origin: ${origin}`);
+    if (process.env.NODE_ENV === 'development' &&
+      (origin.match(/^https?:\/\/localhost(:[0-9]+)?$/) ||
+        origin.match(/^https?:\/\/127\.0\.0\.1(:[0-9]+)?$/))) {
       return callback(null, true);
     }
 
     if (allowedOrigins.includes(origin)) {
-      console.log(`✅ CORS: Allowing whitelisted origin: ${origin}`);
       return callback(null, true);
     }
 
@@ -143,9 +143,9 @@ const limiter = rateLimit({
       '/api/auth/oauth/failure',
       '/api/health'
     ];
-    
-    return req.method === 'OPTIONS' || 
-           skipPaths.some(path => req.path.startsWith(path));
+
+    return req.method === 'OPTIONS' ||
+      skipPaths.some(path => req.path.startsWith(path));
   }
 });
 app.use('/api/', limiter);
@@ -174,8 +174,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/finance-t
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ Connected to MongoDB'))
-.catch((err) => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch((err) => console.error('❌ MongoDB connection error:', err));
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -185,6 +185,7 @@ app.use('/api/budgets', budgetRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/security', securityRoutes); // [NEW] Mount Security Routes
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -213,4 +214,5 @@ app.listen(PORT, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
+// Rate limit updated
 module.exports = app;

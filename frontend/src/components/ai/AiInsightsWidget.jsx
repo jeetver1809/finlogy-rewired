@@ -1,38 +1,32 @@
 /**
- * 💡 AI INSIGHTS WIDGET
+ * 💡 AI INSIGHTS WIDGET (PREMIUM REDESIGN)
  * 
- * Dashboard widget that displays AI-generated financial insights
- * Features:
- * - Auto-generated insights based on user data
- * - Refresh functionality
- * - Loading states
- * - Error handling
+ * "Iron Man's HUD" Style - Glassmorphism, Neon Accents, Futuristic Typography.
+ * Powered by Groq (Llama-3) & Gemini.
  */
 
 import React, { useState, useEffect } from 'react';
-import { 
-  SparklesIcon, 
+import {
+  SparklesIcon,
   ArrowPathIcon,
-  LightBulbIcon,
+  ChatBubbleLeftRightIcon,
   ExclamationTriangleIcon,
-  ChatBubbleLeftRightIcon
+  BoltIcon
 } from '@heroicons/react/24/outline';
 import { aiService } from '../../services/aiService';
-import LoadingSpinner from '../ui/LoadingSpinner';
-import toast from 'react-hot-toast';
 import { formatInsightsAsParagraphs } from '../../utils/aiFormatting.jsx';
+import toast from 'react-hot-toast';
 
 const AiInsightsWidget = ({
   period = 'month',
   onOpenChat,
-  onOpenChatWithContent, // New prop for pre-loading chat with insights
+  onOpenChatWithContent,
   className = ''
 }) => {
   const [insights, setInsights] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [lastUpdated, setLastUpdated] = useState(null);
-  // Removed isExpanded state - using AI chat integration instead
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     generateInsights();
@@ -45,205 +39,134 @@ const AiInsightsWidget = ({
     try {
       const aiInsights = await aiService.generateInsights(period);
       setInsights(aiInsights);
-      setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to generate insights:', error);
-
-      // Check if it's a network/service issue
-      if (error.message.includes('Network connectivity') ||
-          error.message.includes('Service temporarily unavailable') ||
-          error.message.includes('timeout')) {
-        setError('AI insights are temporarily unavailable due to network issues. Showing basic analytics instead.');
-        // Don't show toast for network issues, just display fallback
+      if (error.message.includes('Network') || error.message.includes('timeout')) {
+        setError('AI is offline. Reconnecting...');
       } else {
-        setError(error.message);
-        toast.error('Failed to generate AI insights');
+        setError('Unable to analyze data right now.');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = (e) => {
+    e.stopPropagation();
     generateInsights();
   };
 
-
-
-  // Function to open chat with pre-loaded insights
   const openChatWithInsights = () => {
     if (onOpenChatWithContent && insights) {
-      // Pre-load the chat with full insights
       onOpenChatWithContent(insights);
     } else if (onOpenChat) {
-      // Fallback to regular chat opening
       onOpenChat();
     }
   };
 
-  const shouldShowChatButton = insights && insights.length > 150;
+  // --- RENDER HELPERS ---
 
   return (
-    <div className={`ai-insights-featured interactive-card bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-xl hover:scale-[1.01] ${className}`}>
-      {/* Header */}
-      <div className="ai-header p-5 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="ai-icon-container p-2 bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 rounded-lg border border-purple-200 dark:border-purple-700/50 shadow-sm">
-              <SparklesIcon className="h-5 w-5 text-purple-600 dark:text-purple-400 ai-sparkle animate-pulse" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center space-x-2">
-                <span>AI Insights</span>
-                <span className="ai-badge">✨</span>
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Powered by Gemini AI
-              </p>
+    <div
+      className={`group relative overflow-hidden rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900/40 backdrop-blur-xl shadow-xl dark:shadow-2xl transition-all duration-500 hover:shadow-purple-500/10 dark:hover:shadow-purple-500/20 hover:border-purple-500/30 ${className}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 🔮 Background Glow Effects */}
+      <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-purple-500/20 blur-3xl transition-opacity duration-700 group-hover:opacity-40" />
+      <div className="absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-blue-500/20 blur-3xl transition-opacity duration-700 group-hover:opacity-40" />
+
+      {/* 🟢 Live Indicator & Header */}
+      <div className="relative z-10 flex items-center justify-between border-b border-gray-100 dark:border-white/5 p-5">
+        <div className="flex items-center gap-3">
+          <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-400/30 shadow-inner">
+            <SparklesIcon className="h-4 w-4 text-purple-300 animate-pulse" />
+          </div>
+          <div>
+            <h3 className="font-outfit text-base font-semibold text-gray-900 dark:text-white tracking-wide">
+              Financial Intelligence
+            </h3>
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
+              </span>
+              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                System Active
+              </span>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 disabled:opacity-50 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg hover:scale-110"
-              title="Refresh insights"
-            >
-              <ArrowPathIcon className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </button>
-            
-            {onOpenChat && (
-              <button
-                onClick={onOpenChat}
-                className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg hover:scale-110"
-                title="Open AI chat"
-              >
-                <ChatBubbleLeftRightIcon className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            className={`p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 transition-all ${isLoading ? 'animate-spin' : ''}`}
+            title="Refresh Analysis"
+          >
+            <ArrowPathIcon className="h-4 w-4" />
+          </button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-5">
+      {/* 📝 Main Content Area */}
+      <div className="relative z-10 p-6 min-h-[180px] flex flex-col justify-center">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <LoadingSpinner size="md" />
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                Analyzing your financial data...
-              </p>
-            </div>
+          <div className="space-y-4 animate-pulse">
+            <div className="h-4 w-3/4 rounded bg-white/10" />
+            <div className="h-4 w-1/2 rounded bg-white/10" />
+            <div className="h-4 w-5/6 rounded bg-white/10" />
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              {error.includes('network') || error.includes('temporarily unavailable') ? (
-                <>
-                  <div className="h-12 w-12 bg-yellow-100 dark:bg-yellow-900/50 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <ExclamationTriangleIcon className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-                  </div>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                    {error}
-                  </p>
-                  <div className="flex space-x-2 justify-center">
-                    <button
-                      onClick={handleRefresh}
-                      className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm"
-                    >
-                      Retry AI Insights
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <ExclamationTriangleIcon className="h-12 w-12 text-red-500 mx-auto mb-3" />
-                  <p className="text-sm text-red-600 dark:text-red-400 mb-3">
-                    {error}
-                  </p>
-                  <button
-                    onClick={handleRefresh}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                  >
-                    Try Again
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        ) : insights ? (
-          <div className="space-y-3">
-            {/* Smart Preview with Natural Paragraph Flow */}
-            <div className="ai-content-container space-y-2">
-              {formatInsightsAsParagraphs(insights, true)}
-            </div>
-
-            {/* View Full Analysis in Chat Button */}
-            {shouldShowChatButton && (
-              <div className="flex justify-center pt-2">
-                <button
-                  onClick={openChatWithInsights}
-                  className="inline-flex items-center space-x-2 px-4 py-2 ai-gradient-button text-white rounded-lg transition-all duration-200 text-sm font-medium hover:shadow-lg hover:scale-[1.02] interactive-card border border-blue-500/20"
-                >
-                  <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                  <span>View Full Analysis in Chat</span>
-                  <SparklesIcon className="h-4 w-4 animate-pulse" />
-                </button>
-              </div>
-            )}
-
-            {/* Footer */}
-            <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                <div className="flex items-center space-x-1">
-                  <LightBulbIcon className="h-3 w-3" />
-                  <span>AI-generated insights</span>
-                </div>
-                {lastUpdated && (
-                  <span>
-                    Updated {lastUpdated.toLocaleTimeString()}
-                  </span>
-                )}
-              </div>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center text-red-300">
+            <ExclamationTriangleIcon className="h-8 w-8 mb-2 opacity-80" />
+            <p className="text-sm">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="mt-3 text-xs font-medium text-white/50 hover:text-white underline decoration-dotted underline-offset-4"
+            >
+              Try Reconnecting
+            </button>
           </div>
         ) : (
-          <div className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <SparklesIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
-                No insights available yet
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Add some transactions to get personalized insights
-              </p>
+          <div className="space-y-4">
+            {/* Insight Text */}
+            <div className="prose prose-invert max-w-none">
+              <div className="text-sm leading-relaxed text-gray-600 dark:text-gray-300 font-light tracking-wide">
+                {formatInsightsAsParagraphs(insights, true)}
+              </div>
+            </div>
+
+            {/* Smart Chips (Decorational for now, could be parsed later) */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-green-500/20 bg-green-500/10 text-[10px] font-medium text-green-300">
+                <BoltIcon className="h-3 w-3" /> Efficiency High
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-[10px] font-medium text-blue-300">
+                Stable Trends
+              </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Quick Actions */}
-      {insights && !isLoading && (
-        <div className="px-5 pb-5">
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-3 font-medium">
-              Continue the conversation about your insights
+      {/* 🚀 Footer / Action */}
+      {!isLoading && !error && (
+        <div className="relative z-10 border-t border-gray-100 dark:border-white/5 bg-gray-50/50 dark:bg-white/5 p-4 backdrop-blur-md">
+          <button
+            onClick={openChatWithInsights}
+            className="group/btn w-full relative overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 p-[1px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+          >
+            <div className="relative flex items-center justify-center gap-2 rounded-[11px] bg-gray-900/90 px-4 py-2.5 transition-all group-hover/btn:bg-gray-900/0">
+              <span className="font-medium text-sm text-white group-hover/btn:text-white transition-colors">
+                Deep Dive with AI
+              </span>
+              <ChatBubbleLeftRightIcon className="h-4 w-4 text-purple-300 group-hover/btn:text-white transition-colors" />
             </div>
-            <div className="flex">
-              <button
-                onClick={openChatWithInsights}
-                className="w-full px-3 py-2 ai-gradient-button text-white rounded-md transition-all duration-200 text-sm font-medium hover:shadow-lg hover:scale-[1.02] interactive-card border border-blue-500/20"
-              >
-                <div className="flex items-center justify-center space-x-2">
-                  <ChatBubbleLeftRightIcon className="h-4 w-4" />
-                  <span>Chat About Insights</span>
-                  <SparklesIcon className="h-3 w-3 animate-pulse" />
-                </div>
-              </button>
-            </div>
-          </div>
+            {/* Button Glow */}
+            <div className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity group-hover/btn:opacity-100 blur-sm pointer-events-none" />
+          </button>
         </div>
       )}
     </div>

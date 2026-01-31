@@ -1,5 +1,6 @@
 const Expense = require('../models/Expense');
 const Budget = require('../models/Budget');
+const AuditLog = require('../models/AuditLog'); // [NEW] Audit Log
 
 // @desc    Get all expenses for user
 // @route   GET /api/expenses
@@ -116,6 +117,22 @@ const createExpense = async (req, res) => {
     // Update related budgets
     await updateBudgetsAfterExpense(req.user.id, expense.category, expense.date);
 
+    // [NEW] Audit Log (Create)
+    await AuditLog.create({
+      user: req.user.id,
+      action: 'EXPENSE_CREATE',
+      resource: 'Expense',
+      resourceId: expense._id,
+      details: {
+        category: expense.category,
+        amount: expense.amount
+      },
+      metadata: {
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
+
     res.status(201).json({
       success: true,
       message: 'Expense created successfully',
@@ -163,6 +180,22 @@ const updateExpense = async (req, res) => {
     await updateBudgetsAfterExpense(req.user.id, oldCategory, oldDate);
     await updateBudgetsAfterExpense(req.user.id, expense.category, expense.date);
 
+    // [NEW] Audit Log (Update)
+    await AuditLog.create({
+      user: req.user.id,
+      action: 'EXPENSE_UPDATE',
+      resource: 'Expense',
+      resourceId: expense._id,
+      details: {
+        amount: { old: expense.amount, new: req.body.amount || expense.amount },
+        description: { old: expense.description, new: req.body.description || expense.description }
+      },
+      metadata: {
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
+
     res.json({
       success: true,
       message: 'Expense updated successfully',
@@ -199,6 +232,23 @@ const deleteExpense = async (req, res) => {
     // Update related budgets
     await updateBudgetsAfterExpense(req.user.id, expense.category, expense.date);
 
+    // [NEW] Audit Log (Delete)
+    await AuditLog.create({
+      user: req.user.id,
+      action: 'EXPENSE_DELETE',
+      resource: 'Expense',
+      resourceId: expense._id,
+      details: {
+        amount: expense.amount,
+        category: expense.category,
+        refunded: false // Just an example detail
+      },
+      metadata: {
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      }
+    });
+
     res.json({
       success: true,
       message: 'Expense deleted successfully',
@@ -215,6 +265,7 @@ const deleteExpense = async (req, res) => {
 // Helper function to update budgets after expense changes
 const updateBudgetsAfterExpense = async (userId, category, date) => {
   try {
+    console.log(`🔄 Updating budgets for User: ${userId}, Category: ${category}, Date: ${date}`);
     // Find budgets that might be affected
     const budgets = await Budget.find({
       user: userId,
@@ -227,9 +278,13 @@ const updateBudgetsAfterExpense = async (userId, category, date) => {
       isActive: true,
     });
 
+    console.log(`Found ${budgets.length} budgets to update.`);
+
     // Update spent amount for each budget
     for (const budget of budgets) {
+      console.log(`Updating budget: ${budget.name} (${budget._id})`);
       await budget.updateSpent();
+      console.log(`Budget updated: ${budget.name}. New Spent: ${budget.spent}`);
     }
   } catch (error) {
     console.error('Error updating budgets:', error);

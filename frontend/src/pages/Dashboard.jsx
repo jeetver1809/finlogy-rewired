@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { analyticsService } from '../services/analyticsService';
 import { budgetService } from '../services/budgetService';
@@ -16,11 +17,12 @@ import ErrorBoundary from '../components/ui/ErrorBoundary';
 import toast from 'react-hot-toast';
 import '../styles/dashboard.css';
 
-const Dashboard = ({ onNavigate }) => {
+const Dashboard = ({ onNavigate, onTransactionChange }) => {
   const [dashboardData, setDashboardData] = useState({
     expenses: [],
     income: [],
     budgets: [],
+    security: null,
     summary: null,
     loading: true
   });
@@ -40,12 +42,14 @@ const Dashboard = ({ onNavigate }) => {
         expensesResponse,
         incomeResponse,
         budgetsResponse,
-        summaryResponse
+        summaryResponse,
+        securityResponse
       ] = await Promise.all([
         expenseService.getExpenses().catch(() => ({ data: [] })),
         incomeService.getIncome().catch(() => ({ data: [] })),
         budgetService.getBudgets().catch(() => ({ data: [] })),
-        analyticsService.getSummary(period).catch(() => ({ data: null }))
+        analyticsService.getSummary(period).catch(() => ({ data: null })),
+        api.get('/security/dashboard').catch(() => ({ data: { success: false } }))
       ]);
 
       setDashboardData({
@@ -53,6 +57,7 @@ const Dashboard = ({ onNavigate }) => {
         income: incomeResponse.data || [],
         budgets: budgetsResponse.data || [],
         summary: summaryResponse.data,
+        security: securityResponse.data?.success ? securityResponse.data.data : null,
         loading: false
       });
     } catch (error) {
@@ -97,6 +102,8 @@ const Dashboard = ({ onNavigate }) => {
       await expenseService.createExpense(expenseData);
       // Refresh dashboard data
       fetchDashboardData();
+      // Notify parent to refresh global stats (security badge)
+      if (onTransactionChange) onTransactionChange();
     } catch (error) {
       console.error('Error adding quick expense:', error);
       throw error;
@@ -192,7 +199,7 @@ const Dashboard = ({ onNavigate }) => {
           totalBalance={metrics.totalBalance}
           monthlyExpenses={metrics.monthlyExpenses}
           monthlyIncome={metrics.monthlyIncome}
-          savingsRate={metrics.savingsRate}
+          financialHealthScore={dashboardData.security?.healthScore || 0}
           isLoading={dashboardData.loading}
         />
       </div>
