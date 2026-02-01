@@ -29,7 +29,7 @@ const OAuthCallback = () => {
             default:
               errorMessage = 'Authentication failed. Please try again.';
           }
-          
+
           toast.error(errorMessage);
           navigate('/login');
           setIsLoading(false);
@@ -40,7 +40,9 @@ const OAuthCallback = () => {
           try {
             await handleOAuthCallback(token);
             toast.success('Successfully signed in!');
-            navigate('/dashboard');
+            // Use window.location for full page reload to ensure auth state is properly initialized
+            window.location.replace('/dashboard');
+            return; // Stop execution after redirect
           } catch (error) {
             console.error('OAuth callback error:', error);
             toast.error('Failed to complete authentication. Please try again.');
