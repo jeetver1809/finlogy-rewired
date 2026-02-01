@@ -13,6 +13,10 @@ const protect = async (req, res, next) => {
       // Get token from header
       token = req.headers.authorization.split(' ')[1];
 
+      // Debug: Log first 20 chars of token to identify issues
+      console.log('🔐 Token received (first 20 chars):', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+      console.log('🔐 Token length:', token ? token.length : 0);
+
       // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
