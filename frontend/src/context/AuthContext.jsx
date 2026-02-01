@@ -202,7 +202,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const initiateOAuth = (provider) => {
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+    const baseUrl = import.meta.env.VITE_API_URL || 'https://finlogy-rewired.zeabur.app/api';
 
     // Remove '/api' from baseUrl if it exists since we're adding it below
     const cleanBaseUrl = baseUrl.replace(/\/api$/, '');

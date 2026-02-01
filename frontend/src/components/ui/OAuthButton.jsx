@@ -1,17 +1,17 @@
 import React from 'react';
 import LoadingSpinner from './LoadingSpinner';
 
-const OAuthButton = ({ 
-  provider, 
-  onClick, 
-  isLoading = false, 
+const OAuthButton = ({
+  provider,
+  onClick,
+  isLoading = false,
   disabled = false,
   className = '',
-  children 
+  children
 }) => {
   const handleOAuthClick = () => {
     if (provider === 'google') {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://finlogy-rewired.zeabur.app';
       // Remove any trailing /api from the URL since we'll add it explicitly
       const baseUrl = apiUrl.replace(/\/api$/, '');
       window.location.href = `${baseUrl}/api/auth/google`;
