@@ -65,6 +65,19 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
+
+      // 🎭 DEMO MODE: Skip API call and use mock user
+      if (isDemoMode() && token) {
+        dispatch({
+          type: 'LOGIN_SUCCESS',
+          payload: {
+            user: DEMO_USER,
+            token,
+          },
+        });
+        return;
+      }
+
       if (token) {
         try {
           const response = await authService.getProfile();
@@ -76,6 +89,7 @@ export const AuthProvider = ({ children }) => {
             },
           });
         } catch (error) {
+          console.error('Auth check failed:', error);
           localStorage.removeItem('token');
           dispatch({ type: 'LOGIN_FAILURE' });
         }
