@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { DEMO_USER, enableDemoMode, disableDemoMode, isDemoMode } from '../services/mockData';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -144,6 +145,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    disableDemoMode(); // Clear demo mode if active
     localStorage.removeItem('token');
     dispatch({ type: 'LOGOUT' });
     toast.success('Logged out successfully');
@@ -210,6 +212,20 @@ export const AuthProvider = ({ children }) => {
     window.location.href = `${cleanBaseUrl}/api/auth/${provider}`;
   };
 
+  // 🎭 DEMO MODE LOGIN
+  const loginAsDemo = () => {
+    enableDemoMode();
+    dispatch({
+      type: 'LOGIN_SUCCESS',
+      payload: {
+        user: DEMO_USER,
+        token: 'demo-token-finlogy-hackathon',
+      },
+    });
+    toast.success('Welcome to Demo Mode!');
+    return { success: true };
+  };
+
   const value = {
     ...state,
     login,
@@ -218,6 +234,8 @@ export const AuthProvider = ({ children }) => {
     updateUser,
     handleOAuthCallback,
     initiateOAuth,
+    loginAsDemo,
+    isDemoMode,
   };
 
   return (
