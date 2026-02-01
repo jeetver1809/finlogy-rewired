@@ -1,6 +1,14 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://finlogy-rewired.zeabur.app/api';
+// Ensure the API URL always ends with /api
+const getApiUrl = () => {
+  const baseUrl = import.meta.env.VITE_API_URL || 'https://finlogy-rewired.zeabur.app';
+  // Remove trailing slash if present, then ensure /api suffix
+  const cleanUrl = baseUrl.replace(/\/+$/, '');
+  return cleanUrl.endsWith('/api') ? cleanUrl : `${cleanUrl}/api`;
+};
+
+const API_URL = getApiUrl();
 
 // Create axios instance
 const api = axios.create({
