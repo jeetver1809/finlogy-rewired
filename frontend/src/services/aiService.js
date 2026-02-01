@@ -5,7 +5,7 @@
  * Handles all AI-related API calls from the React components
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://finlogy-rewired.zeabur.app/api';
 
 class AiService {
   constructor() {
@@ -185,7 +185,7 @@ class AiService {
     try {
       // Use categorization as a base for suggestions
       const category = await this.categorizeTransaction(description, 0);
-      
+
       return {
         category,
         suggestedAmount: null, // Could be enhanced with historical data
@@ -261,25 +261,25 @@ class AiService {
    */
   async retryRequest(apiCall, maxRetries = 3) {
     let lastError;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await apiCall();
       } catch (error) {
         lastError = error;
-        
+
         if (attempt === maxRetries) {
           throw lastError;
         }
-        
+
         // Exponential backoff: wait 1s, 2s, 4s...
         const delay = Math.pow(2, attempt - 1) * 1000;
         await new Promise(resolve => setTimeout(resolve, delay));
-        
+
         console.warn(`AI request attempt ${attempt} failed, retrying in ${delay}ms...`);
       }
     }
-    
+
     throw lastError;
   }
 
@@ -295,11 +295,11 @@ class AiService {
     try {
       // This could be a separate endpoint, for now use insights
       const insights = await this.generateInsights('month');
-      
+
       // Extract budget-related recommendations from insights
       const budgetRegex = /budget|spend|save|allocate/i;
       const budgetInsights = insights.split('\n').filter(line => budgetRegex.test(line));
-      
+
       return {
         recommendations: budgetInsights,
         confidence: 0.7,

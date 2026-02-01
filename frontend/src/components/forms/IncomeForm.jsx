@@ -69,7 +69,7 @@ const IncomeForm = ({ isOpen, onClose, onSubmit, income = null, isLoading = fals
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast.error('Please fix the errors in the form');
       return;
@@ -82,7 +82,7 @@ const IncomeForm = ({ isOpen, onClose, onSubmit, income = null, isLoading = fals
       };
 
       await onSubmit(incomeData);
-      
+
       if (!income) {
         // Reset form for new income
         setFormData({
@@ -104,7 +104,7 @@ const IncomeForm = ({ isOpen, onClose, onSubmit, income = null, isLoading = fals
       ...prev,
       [name]: value,
     }));
-    
+
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
@@ -142,9 +142,8 @@ const IncomeForm = ({ isOpen, onClose, onSubmit, income = null, isLoading = fals
               name="title"
               value={formData.title}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.title ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-              }`}
+              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.title ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                }`}
               placeholder="Enter income title"
               disabled={isLoading}
             />
@@ -164,9 +163,8 @@ const IncomeForm = ({ isOpen, onClose, onSubmit, income = null, isLoading = fals
                 onChange={handleChange}
                 step="0.01"
                 min="0"
-                className={`w-full pl-8 pr-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                  errors.amount ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-                }`}
+                className={`w-full pl-8 pr-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.amount ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                  }`}
                 placeholder="0.00"
                 disabled={isLoading}
               />
@@ -202,9 +200,8 @@ const IncomeForm = ({ isOpen, onClose, onSubmit, income = null, isLoading = fals
               name="date"
               value={formData.date}
               onChange={handleChange}
-              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 ${
-                errors.date ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
-              }`}
+              className={`w-full px-3 py-2 border rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.date ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-gray-600'
+                }`}
               disabled={isLoading}
             />
             {errors.date && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.date}</p>}

@@ -68,20 +68,22 @@ const Dashboard = ({ onNavigate, onTransactionChange }) => {
 
   // Calculate dashboard metrics
   const calculateMetrics = () => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
+    // Use UTC for consistent timezone handling with database dates
+    const now = new Date();
+    const currentMonth = now.getUTCMonth();
+    const currentYear = now.getUTCFullYear();
 
     const monthlyExpenses = dashboardData.expenses
       .filter(expense => {
         const expenseDate = new Date(expense.date);
-        return expenseDate.getMonth() === currentMonth && expenseDate.getFullYear() === currentYear;
+        return expenseDate.getUTCMonth() === currentMonth && expenseDate.getUTCFullYear() === currentYear;
       })
       .reduce((sum, expense) => sum + expense.amount, 0);
 
     const monthlyIncome = dashboardData.income
       .filter(income => {
         const incomeDate = new Date(income.date);
-        return incomeDate.getMonth() === currentMonth && incomeDate.getFullYear() === currentYear;
+        return incomeDate.getUTCMonth() === currentMonth && incomeDate.getUTCFullYear() === currentYear;
       })
       .reduce((sum, income) => sum + income.amount, 0);
 

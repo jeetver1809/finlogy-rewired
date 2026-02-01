@@ -5,7 +5,7 @@
  * Manages feedback submission, retrieval, and statistics
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://finlogy-rewired.zeabur.app/api';
 
 class FeedbackService {
   constructor() {
@@ -159,22 +159,22 @@ class FeedbackService {
    */
   async retryRequest(requestFunction, maxRetries = 3, delay = 1000) {
     let lastError;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await requestFunction();
       } catch (error) {
         lastError = error;
-        
+
         if (attempt === maxRetries) {
           break;
         }
-        
+
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, delay * attempt));
       }
     }
-    
+
     throw lastError;
   }
 
@@ -186,20 +186,20 @@ class FeedbackService {
   async getFeedbackAnalytics() {
     try {
       const stats = await this.getFeedbackStats();
-      
+
       // Calculate additional metrics
       const totalFeedback = stats.overall.totalFeedback;
       const avgRating = stats.overall.averageRating;
       const distribution = stats.overall.ratingDistribution;
-      
+
       // Calculate satisfaction rate (4-5 star ratings)
       const satisfiedCount = (distribution[4] || 0) + (distribution[5] || 0);
       const satisfactionRate = totalFeedback > 0 ? (satisfiedCount / totalFeedback) * 100 : 0;
-      
+
       // Calculate most common rating
       const mostCommonRating = Object.entries(distribution)
         .reduce((a, b) => distribution[a[0]] > distribution[b[0]] ? a : b)[0];
-      
+
       return {
         ...stats,
         analytics: {

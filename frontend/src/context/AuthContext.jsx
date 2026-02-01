@@ -122,9 +122,9 @@ export const AuthProvider = ({ children }) => {
     try {
       dispatch({ type: 'LOGIN_START' });
       const response = await authService.register(userData);
-      
+
       localStorage.setItem('token', response.data.token);
-      
+
       dispatch({
         type: 'LOGIN_SUCCESS',
         payload: {
@@ -132,7 +132,7 @@ export const AuthProvider = ({ children }) => {
           token: response.data.token,
         },
       });
-      
+
       toast.success('Registration successful!');
       return { success: true };
     } catch (error) {
@@ -181,7 +181,7 @@ export const AuthProvider = ({ children }) => {
         // Wait for an increasing delay before retrying (exponential backoff)
         const delay = RETRY_DELAY * Math.pow(2, retryCount);
         await new Promise(resolve => setTimeout(resolve, delay));
-        
+
         // Retry the request
         return handleOAuthCallback(token, retryCount + 1);
       }
@@ -189,19 +189,19 @@ export const AuthProvider = ({ children }) => {
       // If we've exhausted retries or it's a different error
       dispatch({ type: 'LOGIN_FAILURE' });
       localStorage.removeItem('token');
-      
+
       let message = 'OAuth authentication failed';
       if (error.response?.status === 429) {
         message = 'Too many requests. Please wait a moment and try again.';
       } else if (error.response?.data?.message) {
         message = error.response.data.message;
       }
-      
+
       throw new Error(message);
     }
   };
 
- const initiateOAuth = (provider) => {
+  const initiateOAuth = (provider) => {
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
     // Remove '/api' from baseUrl if it exists since we're adding it below

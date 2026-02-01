@@ -25,6 +25,8 @@ const securityRoutes = require('./routes/security'); // [NEW] Security Routes
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
+// Trust the first proxy (Zeabur, ngrok, etc.)
+app.set('trust proxy', 1);
 
 // CORS configuration - MUST come before rate limiting and other middleware
 const corsOptions = {
