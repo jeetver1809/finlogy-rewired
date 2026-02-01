@@ -46,7 +46,8 @@ const corsOptions = {
       'http://localhost:5176',
       'http://127.0.0.1:5173',
       'http://127.0.0.1:5174',
-      'http://127.0.0.1:5001'
+      'http://127.0.0.1:5001',
+      'https://finlogy-frontend-tf3a.onrender.com' // Allow Render frontend
     ].filter(Boolean); // Remove any undefined values
 
     // Allow all subdomains of localhost in development
